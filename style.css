@@ -1,1 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retro Space Shooter</title>
 
+<style>
+body {
+    margin: 0;
+    background: black;
+    color: #0ff;
+    font-family: monospace;
+    overflow: hidden;
+}
+
+/* CRT effect */
+body::after {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0,255,255,0.05),
+        rgba(0,255,255,0.05) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
+
+/* Screens */
+.screen {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+button {
+    padding: 10px 20px;
+    background: #0ff;
+    border: none;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+canvas {
+    display: none;
+    background: black;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Start Screen -->
+<div id="startScreen" class="screen">
+    <h1>🚀 RETRO SHOOTER</h1>
+    <p>Move: ← → | Shoot: SPACE | Pause: P</p>
+    <button onclick="startGame()">START GAME</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameOverScreen" class="screen" style="display:none;">
+    <h1>GAME OVER</h1>
+    <p id="finalScore"></p>
+    <button onclick="restartGame()">RESTART</button>
+</div>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let player, bullets, enemies, score, gameRunning, paused, speed;
+
+function init() {
+    player = { x: 180, y: 550, width: 40, height: 20 };
+    bullets = [];
+    enemies = [];
+    score = 0;
+    speed = 2;
+    gameRunning = true;
+    paused = false;
+}
+
+function startGame() {
+    document.getElementById("startScreen").style.display = "none";
+    canvas.style.display = "block";
+    init();
+    gameLoop();
+}
+
+function restartGame() {
+    document.getElementById("gameOverScreen").style.display = "none";
+    canvas.style.display = "block";
+    init();
+    gameLoop();
+}
+
+/* Controls */
+document.addEventListener("keydown", e => {
+    if (!gameRunning) return;
+
+    if (e.key === "ArrowLeft") player.x -= 20;
+    if (e.key === "ArrowRight") player.x += 20;
+
+    if (e.key === " ") {
+        bullets.push({ x: player.x + 18, y: player.y });
+    }
+
+    if (e.key.toLowerCase() === "p") paused = !paused;
+});
+
+/* Game Loop */
+function gameLoop() {
+    if (!gameRunning) return;
+    if (!paused) {
+        update();
+        draw();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+/* Update */
+function update() {
+    // bullets
+    bullets.forEach(b => b.y -= 5);
+
+    // enemies spawn
+    if (Math.random() < 0.03) {
+        enemies.push({
+            x: Math.random() * 360,
+            y: 0,
+            size: 20
+        });
+    }
+
+    enemies.forEach(e => e.y += speed);
+
+    // collision
+    bullets.forEach((b, bi) => {
+        enemies.forEach((e, ei) => {
+            if (
+                b.x < e.x + e.size &&
+                b.x + 4 > e.x &&
+                b.y < e.y + e.size &&
+                b.y + 10 > e.y
+            ) {
+                bullets.splice(bi, 1);
+                enemies.splice(ei, 1);
+                score += 10;
+                speed += 0.2;
+            }
+        });
+    });
+
+    // player collision
+    enemies.forEach(e => {
+        if (
+            player.x < e.x + e.size &&
+            player.x + player.width > e.x &&
+            player.y < e.y + e.size &&
+            player.y + player.height > e.y
+        ) {
+            endGame();
+        }
+    });
+}
+
+/* Draw */
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // player
+    ctx.fillStyle = "#0ff";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // bullets
+    ctx.fillStyle = "#fff";
+    bullets.forEach(b => ctx.fillRect(b.x, b.y, 4, 10));
+
+    // enemies
+    ctx.fillStyle = "red";
+    enemies.forEach(e => ctx.fillRect(e.x, e.y, e.size, e.size));
+
+    // score
+    ctx.fillStyle = "#0ff";
+    ctx.fillText("Score: " + score, 10, 20);
+}
+
+/* End Game */
+function endGame() {
+    gameRunning = false;
+    canvas.style.display = "none";
+    document.getElementById("finalScore").innerText = "Score: " + score;
+
+    // save high score
+    let high = localStorage.getItem("highScore") || 0;
+    if (score > high) {
+        localStorage.setItem("highScore", score);
+    }
+
+    document.getElementById("gameOverScreen").style.display = "flex";
+}
+</script>
+
+</body>
+</html>
